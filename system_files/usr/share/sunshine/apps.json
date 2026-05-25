@@ -1,0 +1,23 @@
+{
+  "env": {
+    "PATH": "$(PATH):$(HOME)/.local/bin"
+  },
+  "apps": [
+    {
+      "name": "Steam",
+      "output": "",
+      "command": "steam -tenfoot",
+      "detached": [
+        "steam"
+      ],
+      "image-path": "steam.png"
+    },
+    {
+      "name": "Desktop",
+      "output": "",
+      "command": "steam -bigpicture",
+      "detached": [],
+      "image-path": "desktop.png"
+    }
+  ]
+}

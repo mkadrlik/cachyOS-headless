@@ -1,0 +1,21 @@
+"libraryfolders"
+{
+	"0"
+	{
+		"path"		"/home/gamer/.steam/steam"
+		"label"		"Default"
+		"contentid"		""
+		"totalsize"		"0"
+		"updateclean"		"0"
+		"timeleft"		"0"
+	}
+	"1"
+	{
+		"path"		"/home/gamer/games"
+		"label"		"Games"
+		"contentid"		""
+		"totalsize"		"0"
+		"updateclean"		"0"
+		"timeleft"		"0"
+	}
+}

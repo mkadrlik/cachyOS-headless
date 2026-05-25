@@ -1,0 +1,9 @@
+# Environment (secrets)
+.env
+
+# Game library (large binary blobs, downloaded content)
+games/
+
+# OS metadata
+.DS_Store
+Thumbs.db

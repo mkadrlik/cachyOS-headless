@@ -1,0 +1,43 @@
+{
+  "env": {
+    "PATH": "/usr/local/bin:/usr/bin:/bin"
+  },
+  "apps": [
+    {
+      "name": "Steam",
+      "output": "",
+      "cmd-prep": [],
+      "image-path": "",
+      "exclude-global-prep-cmd": "false",
+      "prep-cmd": [],
+      "detached": [
+        {
+          "cmd": [
+            "steam",
+            "-tenfoot"
+          ],
+          "elevated": "false"
+        }
+      ],
+      "command": "steam -tenfoot",
+      "working-dir": "",
+      "auto-detach": "true",
+      "elevated": "false",
+      "elevated-cmd": []
+    },
+    {
+      "name": "Desktop",
+      "output": "",
+      "cmd-prep": [],
+      "image-path": "",
+      "exclude-global-prep-cmd": "false",
+      "prep-cmd": [],
+      "detached": [],
+      "command": "steam -bigpicture",
+      "working-dir": "",
+      "auto-detach": "true",
+      "elevated": "false",
+      "elevated-cmd": []
+    }
+  ]
+}

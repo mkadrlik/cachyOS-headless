@@ -1,0 +1,28 @@
+# Sway config for headless Sunshine streaming
+# Uses WLR_BACKEND=headless — virtual compositor output, no physical monitor.
+# ⚠️ Host kernel parameter amdgpu.virtual_display=desc:1920x1080 is REQUIRED
+#    for proper DRM/Vulkan device matching. Without it, software rendering.
+
+# ── Output ─────────────────────────────────────────────────────
+# headless backend creates HEADLESS-1 output automatically.
+# Resolution set at runtime by entrypoint.sh via sed.
+output HEADLESS-1 mode 1920x1080@120Hz
+
+# ── Startup ────────────────────────────────────────────────────
+# Sunshine auto-starts via entrypoint.sh after display is ready.
+# Steam started by entrypoint.sh after display is ready.
+
+# ── Misc ───────────────────────────────────────────────────────
+# Never hide cursor — Sunshine captures it
+seat seat0 hide_cursor 0
+
+# Focus follow mouse (Sunshine input injection)
+focus_follows_mouse no
+
+# Steam windows always fullscreen
+for_window [app_id="^steam_.*$"] fullscreen
+for_window [class="^steam_.*$"] fullscreen
+
+# ── Idle ────────────────────────────────────────────────
+# Prevent screen blanking — streaming should never sleep
+exec_always swayidle timeout 999999 '' before-sleep ''

@@ -1,0 +1,89 @@
+# CachyOS Headless Steam — Docker Compose
+# Gaming container with Sway (headless) + Sunshine (Moonlight) streaming
+# Uses WLR_BACKEND=headless + GPU rendering (no vkms/pixman)
+#
+# Architecture:
+# - Sway headless backend: virtual compositor output, no physical monitor
+# - GPU rendering (GLES2/Vulkan) on AMD via DRM/Vulkan device matching
+# - ⚠️ Host kernel parameter amdgpu.virtual_display REQUIRED for matching
+# - Sunshine wlr capture: reads GPU DMA-BUFs via wlr-screencopy
+# - VA-API encoding on renderD128
+# - PipeWire audio isolation via null-sink
+#
+# Why headless backend (not vkms+pixman):
+#   headless backend creates a virtual output without needing a physical monitor.
+#   Sway renders on the AMD GPU via GLES2/Vulkan → DMA-BUFs → wlr-screencopy.
+#   No pixman SHM buffer dead end, no vkms, no HDMI dummy plug.
+
+services:
+    cachyOS-headless:
+        image: cachyos-headless:latest
+        build:
+            context: .
+            dockerfile: Containerfile
+            args:
+                PUID: ${PUID:-1000}
+                PGID: ${PGID:-1000}
+                CONTAINER_USER: ${CONTAINER_USER:-gamer}
+        container_name: cachyOS-headless
+        hostname: cachyOS-headless
+        init: false # Our entrypoint.sh handles SIGTERM/SIGINT with trap
+        privileged: true # Required for uinput, DRM access
+        environment:
+            - ENABLE_SUNSHINE=${ENABLE_SUNSHINE:-true}
+            - ENABLE_STEAM=${ENABLE_STEAM:-true}
+            - PUID=${PUID:-1000}
+            - PGID=${PGID:-1000}
+            - CONTAINER_USER=${CONTAINER_USER:-gamer}
+            # Sunshine credentials (set on first run via Web UI at :47990)
+            - SUNSHINE_USER=${SUNSHINE_USER:-admin}
+            - SUNSHINE_PASS=${SUNSHINE_PASS:-admin}
+            # AMD GPU render node for VA-API encoding
+            - RENDER_NODE=${RENDER_NODE:-/dev/dri/renderD128}
+            # Display resolution and refresh rate
+            - RENDER_WIDTH=${RENDER_WIDTH:-1920}
+            - RENDER_HEIGHT=${RENDER_HEIGHT:-1080}
+            - REFRESH_RATE=${REFRESH_RATE:-120}
+            # Sway Wayland display name
+            - WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-wayland-1}
+        volumes:
+            - gamer_home:/home/gamer
+            # Persistent game storage — survives container rebuilds
+            - ./games:/home/gamer/games
+        devices:
+            - /dev/dri:/dev/dri # GPU for GLES2/Vulkan rendering + VA-API encoding
+            - /dev/input:/dev/input # Gamepads, mice, keyboards
+            - /dev/uinput:/dev/uinput # Virtual input devices (Sunshine)
+            - /dev/snd:/dev/snd # ALSA (fallback audio)
+        ports:
+            # Sunshine streaming — all required ports for Moonlight connectivity
+            # TCP+UDP 47984-47990: streaming + web UI + discovery
+            # TCP+UDP 47998-48000: control + video/data streams
+            # TCP+UDP 48010: RTSP handshake + gamestream data
+            - "47984-47990:47984-47990/tcp"
+            - "47984-47990:47984-47990/udp"
+            - "47998-48000:47998-48000/tcp"
+            - "47998-48000:47998-48000/udp"
+            - "48010:48010/tcp"
+            - "48010:48010/udp"
+        restart: "no"
+        shm_size: "2g" # Steam's CEF needs /dev/shm for GPU command buffers
+
+    # Moonlight Web Client — browser-based streaming via WebRTC
+    moonlight-web:
+        image: mrcreativ3001/moonlight-web-stream:latest
+        container_name: moonlight-web
+        hostname: moonlight-web
+        ports:
+            - "8080:8080/tcp" # Web UI
+            - "40000-40010:40000-40010/udp" # WebRTC media streams
+        environment:
+            - WEBRTC_NAT_1TO1_HOST=192.168.50.10 # LAN IP for WebRTC peer connection
+        volumes:
+            # OpenH264 WASM decoder — required for non-HTTPS H.264 fallback
+            # Built from github.com/MrCreativ3001/openh264-js with Emscripten
+            - ./moonlight-web/libopenh264/decoder.js:/moonlight-web/static/libopenh264/decoder.js:ro
+        restart: unless-stopped
+
+volumes:
+    gamer_home:
