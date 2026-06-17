@@ -1,12 +1,23 @@
-# Sway config for headless Sunshine streaming
-# Uses WLR_BACKEND=headless — virtual compositor output, no physical monitor.
+# Sway config for headless Sunshine streaming — multi-backend
+# Uses WLR_BACKENDS=headless,libinput — headless creates the virtual
+# compositor output (no physical monitor), libinput detects Sunshine's
+# uinput virtual input devices (mouse, keyboard, touch).
+#
 # ⚠️ Host kernel parameter amdgpu.virtual_display=desc:1920x1080 is REQUIRED
-#    for proper DRM/Vulkan device matching. Without it, software rendering.
+#    without it wlroots can't match DRM and Vulkan devices, falling back to
+#    software rendering (llvmpipe).
 
 # ── Output ─────────────────────────────────────────────────────
 # headless backend creates HEADLESS-1 output automatically.
 # Resolution set at runtime by entrypoint.sh via sed.
-output HEADLESS-1 mode 1920x1080@120Hz
+output HEADLESS-1 mode MODE_PLACEHOLDER
+
+# ── Input ───────────────────────────────────────────────────────
+# libinput backend picks up Sunshine's uinput devices (Mouse passthrough,
+# Keyboard passthrough, Touch passthrough) automatically. No special config
+# needed — Sunshine creates these at startup via /dev/uinput.
+# Seat seat0 accepts all libinput devices by default.
+seat seat0 hide_cursor 0
 
 # ── Startup ────────────────────────────────────────────────────
 # Sunshine auto-starts via entrypoint.sh after display is ready.

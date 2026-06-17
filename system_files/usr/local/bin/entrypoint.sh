@@ -312,24 +312,37 @@ PIDS+=("$SEATD_PID")
 echo "[entrypoint] seatd started (PID: ${SEATD_PID}, group: video)"
 sleep 1
 
-# ── 10b. Start Sway (headless backend + GPU rendering) ──────────
-# Uses WLR_BACKEND=headless — creates a virtual compositor output without
-# a physical monitor. Sway renders on the AMD GPU (auto-detected GLES2/Vulkan),
-# allocates DMA-BUFs. wlr-screencopy returns real GPU pixel data — no
-# pixman/SHM dead end.
+# ── 10b. Start Sway (multi-backend: headless + libinput) ────────
+# Uses WLR_BACKENDS=headless,libinput — creates a virtual compositor output
+# (no physical monitor) AND enables libinput for Sunshine's uinput virtual
+# input devices (mouse, keyboard, touch). Without libinput backend, Sunshine's
+# input devices are invisible to Sway and mouse/keyboard injection fails.
+#
+# Sway renders on the AMD GPU (auto-detected GLES2/Vulkan), allocates DMA-BUFs.
+# wlr-screencopy returns real GPU pixel data — no pixman/SHM dead end.
 #
 # ⚠️ Host kernel parameter: amdgpu.virtual_display=desc:1920x1080 is REQUIRED.
 #    Without it, wlroots can't match DRM and Vulkan devices, falling back to
 #    software rendering (llvmpipe). Verify with: cat /proc/cmdline | grep virtual
 #
 # Key env vars:
-#   WLR_BACKEND=headless: no DRM/CRTC needed
-#   WLR_RENDERER: unset = auto-detect (Vulkan/GLES2 on AMD GPU)
-echo "[entrypoint] Starting Sway headless+GPU (${RENDER_WIDTH}x${RENDER_HEIGHT}@${REFRESH_RATE}Hz)..."
-echo "[entrypoint]   Backend: headless (no physical monitor needed — uses amdgpu.virtual_display)"
+#   WLR_BACKENDS=headless,libinput: multi-backend for output+input
+# ── 10. Start Display Server ──────────────────────────────────
+# Key env vars:
+#   WLR_BACKENDS=headless,libinput: multi-backend for output+input
+#   WLR_LIBINPUT_NO_DEVICES=1: suppress the "no input devices" error in
+#     containerized environments without physical input hardware. libinput
+#     initializes empty; it picks up Sunshine's uinput devices dynamically
+#     via udev events when a Moonlight client connects.
+echo "[entrypoint] Starting Sway multi-backend (${RENDER_WIDTH}x${RENDER_HEIGHT}@${REFRESH_RATE}Hz)..."
+echo "[entrypoint]   Backend: headless+libinput (virtual output + uinput input support)"
 echo "[entrypoint]   Renderer: auto-detect (Vulkan/GLES2 on AMD GPU)"
 echo "[entrypoint]   wlr-screencopy: returns GPU DMA-BUFs for Sunshine"
 
+# NOTE: WLR_BACKENDS (plural) enables multi-backend — headless for virtual
+# output + libinput for Sunshine's uinput virtual input devices. Without
+# libinput backend, Sunshine's mouse/keyboard uinput devices are invisible
+# to Sway and input injection fails.
 SWAY_ENV="
 XDG_RUNTIME_DIR=/run/user/${PUID}
 XDG_SESSION_TYPE=wayland
@@ -340,7 +353,7 @@ HOME=/home/${CONTAINER_USER}
 DBUS_SESSION_BUS_ADDRESS=${DBUS_SESSION_BUS_ADDRESS}
 PIPEWIRE_RUNTIME_DIR=/run/user/${PUID}/pipewire
 LANG=${LANG}
-WLR_BACKEND=headless
+WLR_BACKENDS=headless,libinput
 WLR_LIBINPUT_NO_DEVICES=1
 SWAYSOCK=/run/user/${PUID}/sway-ipc.sock
 "
@@ -348,7 +361,7 @@ SWAYSOCK=/run/user/${PUID}/sway-ipc.sock
 # Update sway config with desired resolution
 SWAY_CONF="/etc/sway/config"
 if [ -f "${SWAY_CONF}" ]; then
-    sed -i "s/mode [0-9x]*@[0-9]*Hz/mode ${RENDER_WIDTH}x${RENDER_HEIGHT}@${REFRESH_RATE}Hz/" "${SWAY_CONF}" 2>/dev/null || true
+    sed -i "s/mode MODE_PLACEHOLDER\|mode [0-9x]*@[0-9]*Hz/mode ${RENDER_WIDTH}x${RENDER_HEIGHT}@${REFRESH_RATE}Hz/" "${SWAY_CONF}" 2>/dev/null || true
 fi
 
 sudo -u "${CONTAINER_USER}" env ${SWAY_ENV} \
